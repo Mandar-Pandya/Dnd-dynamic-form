@@ -24,7 +24,22 @@ import {
 } from "../ui/form";
 import { Switch } from "../ui/switch";
 import { cn } from "@/lib/utils";
-import { Select } from "../ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+
+const options = [
+  { value: "text", label: "Text" },
+  { value: "password", label: "Password" },
+  { value: "email", label: "Email" },
+  { value: "number", label: "Number" },
+];
 
 const type: ElementsType = "TextField";
 const extraAttributes = {
@@ -32,6 +47,7 @@ const extraAttributes = {
   helperText: "Helper text",
   required: false,
   placeHolder: "Value here...",
+  inputType: "text" as any,
 };
 
 const propertiesSchema = z.object({
@@ -39,6 +55,7 @@ const propertiesSchema = z.object({
   helperText: z.string().max(50),
   required: z.boolean().default(false),
   placeHolder: z.string().max(50),
+  inputType: z.enum(["text", "password", "email", "number"]).default("text"),
 });
 
 export const TextFieldFormElement: FormElement = {
@@ -56,10 +73,17 @@ export const TextFieldFormElement: FormElement = {
   formComponent: FormComponent,
   propertiesComponent: PropertiesComponent,
   validate: (formElement: FormElementInstance, currentValue: string) => {
+    console.log(formElement);
+    console.log(currentValue);
     const element = formElement as CustomInstance;
-    if (element.extraAttributes.required) {
-      return currentValue.length > 0;
-    }
+    const { required, minLength, maxLength } = element.extraAttributes;
+
+    console.log(currentValue);
+
+    if (required && !currentValue.trim()) return false;
+    // if (minLength && currentValue.length < minLength) return false;
+    // if (maxLength && currentValue.length > maxLength) return false;
+
     return true;
   },
 };
@@ -76,16 +100,17 @@ function DesignerComponent({
   elementInstance: FormElementInstance;
 }) {
   const element = elementInstance as CustomInstance;
-  const { label, required, placeHolder, helperText } = element.extraAttributes;
+  const { label, required, placeHolder, helperText, inputType } =
+    element.extraAttributes;
 
   return (
     <div className="flex w-full flex-col gap-2">
       <Label>
-        {label} drag canvas
+        {label}
         {required && "*"}
       </Label>
-      <Input readOnly disabled placeholder={placeHolder} />
-      {helperText && (
+      <Input readOnly disabled placeholder={placeHolder} type={inputType} />
+      {helperText && required && (
         <p className="text-[0.8rem] text-muted-foreground">{helperText}</p>
       )}
     </div>
@@ -111,15 +136,17 @@ function FormComponent({
     setError(isInvalid === true);
   }, [isInvalid]);
 
-  const { label, required, placeHolder, helperText } = element.extraAttributes;
+  const { label, required, placeHolder, helperText, inputType } =
+    element.extraAttributes;
 
   return (
     <div className="flex w-full flex-col gap-2">
       <Label className={cn(error && "text-red-500")}>
-        {label} preview form
-        {required && "*"} preview form
+        {label}
+        {required && "*"}
       </Label>
       <Input
+        type={inputType}
         className={cn(error && "border-red-500")}
         placeholder={placeHolder}
         onChange={(e) => setValue(e.target.value)}
@@ -133,7 +160,7 @@ function FormComponent({
         }}
         value={value}
       />
-      {helperText && (
+      {helperText && required && (
         <p
           className={cn(
             "text-[0.8rem] text-muted-foreground",
@@ -162,6 +189,7 @@ function PropertiesComponent({
       helperText: element.extraAttributes.helperText,
       required: element.extraAttributes.required,
       placeHolder: element.extraAttributes.placeHolder,
+      inputType: element.extraAttributes.inputType,
     },
   });
 
@@ -170,7 +198,8 @@ function PropertiesComponent({
   }, [element, form]);
 
   function applyChanges(values: PropertiesFormSchemaType) {
-    const { label, helperText, required, placeHolder } = values;
+    const { label, helperText, required, placeHolder, inputType } = values;
+    console.log(values);
     updateElement(element.id, {
       ...element,
       extraAttributes: {
@@ -178,6 +207,7 @@ function PropertiesComponent({
         helperText: helperText,
         required: required,
         placeHolder: placeHolder,
+        inputType: inputType,
       },
     });
   }
@@ -188,23 +218,38 @@ function PropertiesComponent({
         onSubmit={(e) => e.preventDefault()}
         onBlur={form.handleSubmit(applyChanges)}
       >
-        {/* <FormField
+        <FormField
           control={form.control}
-          name="label"
+          name="inputType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel htmlFor={field.name}>Label</FormLabel>
+              <FormLabel htmlFor={field.name}>Input Type</FormLabel>
               <FormControl>
-                <Select />
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => field.onChange(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select input type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {options.map((ele, index) => (
+                        <SelectItem key={index} value={ele.value}>
+                          {ele.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </FormControl>
               <FormDescription>
-                The label of the field. <br />
-                It will be displayed above the field
+                Choose the input type (e.g., text, password, email, number).
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
-        /> */}
+        />
         <FormField
           control={form.control}
           name="label"
@@ -250,30 +295,7 @@ function PropertiesComponent({
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="helperText"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor={field.name}>Helper text</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.currentTarget.blur();
-                    }
-                  }}
-                />
-              </FormControl>
-              <FormDescription>
-                The helper text of the field. <br />
-                It will be displayed below the field
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {JSON.stringify(form.getValues("required"))}
         <FormField
           control={form.control}
           name="required"
@@ -295,6 +317,126 @@ function PropertiesComponent({
             </FormItem>
           )}
         />
+        {form?.getValues("required") && (
+          <FormField
+            control={form.control}
+            name="helperText"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor={field.name}>Helper text</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.currentTarget.blur();
+                      }
+                    }}
+                  />
+                </FormControl>
+                <FormDescription>
+                  The helper text of the field. <br />
+                  It will be displayed below the field
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* <FormField
+          control={form.control}
+          name="minLength"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel htmlFor={field.name}>Minimum Length</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  type="number"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                />
+              </FormControl>
+              <FormDescription>
+                Minimum number of characters allowed.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="minLengthError"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel htmlFor={field.name}>
+                Minimum Length Error Message
+              </FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                />
+              </FormControl>
+              <FormDescription>
+                Error message when input is too short.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="maxLength"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel htmlFor={field.name}>Maximum Length</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  type="number"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                />
+              </FormControl>
+              <FormDescription>
+                Maximum number of characters allowed.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="maxLengthError"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel htmlFor={field.name}>
+                Maximum Length Error Message
+              </FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                />
+              </FormControl>
+              <FormDescription>
+                Error message when input is too long.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        /> */}
       </form>
     </Form>
   );
