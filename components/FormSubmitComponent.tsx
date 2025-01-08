@@ -21,6 +21,7 @@ function FormSubmitComponent({ formContent, formURL }: Props) {
 
   const validateForm = useCallback(() => {
     for (const field of formContent) {
+      console.log(field)
       const isValid = FormElements[field.type].validate(
         field,
         formValues.current[field.id] || "",
@@ -40,7 +41,9 @@ function FormSubmitComponent({ formContent, formURL }: Props) {
   }, []);
 
   const submitForm = async () => {
+console.log("")
     formErrors.current = {};
+    console.log(validateForm(),"validation form console")
     const validForm = validateForm();
 
     if (!validForm) {
@@ -97,7 +100,10 @@ function FormSubmitComponent({ formContent, formURL }: Props) {
           );
         })}
 
-        <Button onClick={() => startTransition(submitForm)} disabled={pending}>
+        <Button onClick={() =>{ startTransition(submitForm)
+
+          console.log("submitti g")
+        }} disabled={pending}>
           {pending ? (
             <Loader2 className="animate-spin" />
           ) : (
